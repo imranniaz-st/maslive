@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { ArrowLeft, Terminal, Activity, Clock, Server, CheckCircle, XCircle } from "lucide-react";
-import { useGetScan } from "@workspace/api-client-react";
+import { getGetScanQueryKey, useGetScan } from "@workspace/api-client-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +16,7 @@ export default function ScanDetail() {
   const scanId = Number(id);
   const { data: scan, isLoading } = useGetScan(scanId, {
     query: {
+      queryKey: getGetScanQueryKey(scanId),
       enabled: !!scanId,
       refetchInterval: (query) => {
         const state = query.state.data?.status;

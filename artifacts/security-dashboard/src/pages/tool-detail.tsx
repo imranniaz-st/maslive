@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { ArrowLeft, Play, Terminal, ChevronRight, CheckCircle2, Clock, XCircle, AlertTriangle } from "lucide-react";
-import { useGetTool, useCreateScan, useGetScan } from "@workspace/api-client-react";
+import {
+  getGetScanQueryKey,
+  getGetToolQueryKey,
+  useCreateScan,
+  useGetScan,
+  useGetTool,
+} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +22,9 @@ export default function ToolDetail() {
   const { toast } = useToast();
   
   const toolId = Number(id);
-  const { data: tool, isLoading: toolLoading } = useGetTool(toolId, { query: { enabled: !!toolId } });
+  const { data: tool, isLoading: toolLoading } = useGetTool(toolId, {
+    query: { queryKey: getGetToolQueryKey(toolId), enabled: !!toolId },
+  });
   const createScan = useCreateScan();
 
   const [target, setTarget] = useState("");
@@ -26,6 +34,7 @@ export default function ToolDetail() {
   // Poll scan status if we just started one
   const { data: scan } = useGetScan(activeScanId!, { 
     query: { 
+      queryKey: getGetScanQueryKey(activeScanId!),
       enabled: !!activeScanId,
       refetchInterval: (query) => {
         const state = query.state.data?.status;

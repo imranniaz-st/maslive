@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, cronJobsTable, toolsTable, scansTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { spawn } from "child_process";
-import cron from "node-cron";
+import cron, { type ScheduledTask } from "node-cron";
 import {
   CreateCronJobBody,
   UpdateCronJobBody,
@@ -16,7 +16,8 @@ import { logger } from "../lib/logger";
 
 const router = Router();
 
-const activeJobs = new Map<number, cron.ScheduledTask>();
+const activeJobs = new Map<number, ScheduledTask>();
+const scanTimeoutMs = Number(process.env.SCAN_TIMEOUT_MS ?? 120000);
 
 function mapJob(job: typeof cronJobsTable.$inferSelect) {
   return {
@@ -36,9 +37,10 @@ function mapJob(job: typeof cronJobsTable.$inferSelect) {
 
 function computeNextRun(schedule: string): Date | null {
   try {
-    const task = cron.schedule(schedule, () => {}, { scheduled: false });
-    const nextDates = (task as unknown as { nextDate: () => { toJSDate: () => Date } }).nextDate?.();
-    if (nextDates) return nextDates.toJSDate();
+    const task = cron.createTask(schedule, () => {});
+    const nextRun = task.getNextRun();
+    task.destroy();
+    return nextRun;
   } catch {
     // ignore
   }
@@ -47,9 +49,8 @@ function computeNextRun(schedule: string): Date | null {
 
 async function executeTool(jobId: number, command: string, target: string, args: string, toolId: number, toolName: string) {
   const startTime = Date.now();
-  const parts = [command, ...args.split(" ").filter(Boolean), target].filter(Boolean);
-  const cmd = parts[0];
-  const cmdArgs = parts.slice(1);
+  const cmd = command;
+  const cmdArgs = [...splitCommandArgs(args), target].filter(Boolean);
   const outputChunks: string[] = [];
 
   const [scan] = await db.insert(scansTable).values({
@@ -67,7 +68,11 @@ async function executeTool(jobId: number, command: string, target: string, args:
 
   try {
     await new Promise<void>((resolve) => {
-      const proc = spawn(cmd, cmdArgs, { timeout: 120000 });
+      const proc = spawn(cmd, cmdArgs, {
+        timeout: Number.isFinite(scanTimeoutMs) && scanTimeoutMs > 0 ? scanTimeoutMs : 120000,
+        shell: process.platform === "win32",
+        windowsHide: true,
+      });
       proc.stdout.on("data", (d: Buffer) => outputChunks.push(d.toString()));
       proc.stderr.on("data", (d: Buffer) => outputChunks.push(d.toString()));
       proc.on("close", async (code) => {
@@ -98,6 +103,11 @@ async function executeTool(jobId: number, command: string, target: string, args:
   }
 
   return scan;
+}
+
+function splitCommandArgs(args: string) {
+  const matches = args.matchAll(/"([^"]*)"|'([^']*)'|[^\s]+/g);
+  return Array.from(matches, (match) => match[1] ?? match[2] ?? match[0]);
 }
 
 function scheduleJob(job: typeof cronJobsTable.$inferSelect, tool: typeof toolsTable.$inferSelect) {
