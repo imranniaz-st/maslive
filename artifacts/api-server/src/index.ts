@@ -1,20 +1,21 @@
-import app from "./app";
+import { loadRootEnv } from "./lib/env";
 import { logger } from "./lib/logger";
-import { initCronJobs } from "./routes/cron-jobs";
 
-const rawPort = process.env["PORT"];
+loadRootEnv();
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+const rawPort = process.env["API_PORT"] ?? process.env["PORT"] ?? "8080";
 
 const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
+
+const [{ default: app }, { initCronJobs }, { syncBuiltinTools }] = await Promise.all([
+  import("./app"),
+  import("./routes/cron-jobs"),
+  import("./lib/tool-config"),
+]);
 
 app.listen(port, (err) => {
   if (err) {
@@ -24,5 +25,6 @@ app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
 
+  syncBuiltinTools().catch((e) => logger.error({ err: e }, "Failed to sync builtin tools"));
   initCronJobs().catch((e) => logger.error({ err: e }, "Failed to initialize cron jobs"));
 });

@@ -10,6 +10,7 @@ import {
 } from "@workspace/api-zod";
 
 const router = Router();
+const scanTimeoutMs = Number(process.env.SCAN_TIMEOUT_MS ?? 60000);
 
 function mapScan(scan: typeof scansTable.$inferSelect) {
   return {
@@ -89,15 +90,18 @@ async function runScanAsync(scanId: number, command: string, target: string, arg
   await db.update(scansTable).set({ status: "running" }).where(eq(scansTable.id, scanId));
 
   const startTime = Date.now();
-  const parts = [command, ...args.split(" ").filter(Boolean), target].filter(Boolean);
-  const cmd = parts[0];
-  const cmdArgs = parts.slice(1);
+  const cmd = command;
+  const cmdArgs = [...splitCommandArgs(args), target].filter(Boolean);
 
   const outputChunks: string[] = [];
 
   try {
     await new Promise<void>((resolve) => {
-      const proc = spawn(cmd, cmdArgs, { timeout: 60000 });
+      const proc = spawn(cmd, cmdArgs, {
+        timeout: Number.isFinite(scanTimeoutMs) && scanTimeoutMs > 0 ? scanTimeoutMs : 60000,
+        shell: process.platform === "win32",
+        windowsHide: true,
+      });
 
       proc.stdout.on("data", (data: Buffer) => {
         outputChunks.push(data.toString());
@@ -150,6 +154,11 @@ async function runScanAsync(scanId: number, command: string, target: string, arg
       })
       .where(eq(scansTable.id, scanId));
   }
+}
+
+function splitCommandArgs(args: string) {
+  const matches = args.matchAll(/"([^"]*)"|'([^']*)'|[^\s]+/g);
+  return Array.from(matches, (match) => match[1] ?? match[2] ?? match[0]);
 }
 
 router.get("/:id", async (req, res) => {
