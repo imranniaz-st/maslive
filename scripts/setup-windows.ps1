@@ -30,6 +30,13 @@ if ($corepack) {
 }
 
 $pnpm = Get-Command pnpm.cmd -ErrorAction SilentlyContinue
+if (-not $pnpm -and $npm) {
+  $npmPrefix = (& $npm.Source prefix -g).Trim()
+  $pnpmFromPrefix = Join-Path $npmPrefix "pnpm.cmd"
+  if (Test-Path $pnpmFromPrefix) {
+    $pnpm = [pscustomobject]@{ Source = $pnpmFromPrefix }
+  }
+}
 if (-not $pnpm) {
   throw "pnpm.cmd was not found after setup. Restart PowerShell and run this script again."
 }
