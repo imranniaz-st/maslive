@@ -16,8 +16,23 @@ $nodeVersion = (& node --version).Trim()
 Write-Host "Found $nodeVersion"
 
 Write-Host "Enabling Corepack/pnpm..."
-corepack enable
-corepack prepare pnpm@latest --activate
+$corepack = Get-Command corepack.cmd -ErrorAction SilentlyContinue
+if ($corepack) {
+  & $corepack.Source enable
+  & $corepack.Source prepare pnpm@latest --activate
+} else {
+  $npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
+  if (-not $npm) {
+    throw "Neither corepack.cmd nor npm.cmd was found. Reinstall Node.js with npm/Corepack enabled."
+  }
+  Write-Host "Corepack was not found; installing pnpm globally with npm.cmd..."
+  & $npm.Source install -g pnpm
+}
+
+$pnpm = Get-Command pnpm.cmd -ErrorAction SilentlyContinue
+if (-not $pnpm) {
+  throw "pnpm.cmd was not found after setup. Restart PowerShell and run this script again."
+}
 
 if (-not (Test-Path ".env")) {
   Copy-Item ".env.example" ".env"
@@ -28,7 +43,7 @@ if (-not (Test-Path ".env")) {
 
 if (-not $SkipInstall) {
   Write-Host "Installing workspace dependencies with pnpm..."
-  pnpm install
+  & $pnpm.Source install
 }
 
 Write-Host ""

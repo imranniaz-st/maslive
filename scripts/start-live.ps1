@@ -19,20 +19,28 @@ if (Test-Path $EnvFile) {
   }
 }
 
+$pnpm = Get-Command pnpm.cmd -ErrorAction SilentlyContinue
+if (-not $pnpm) {
+  $pnpm = Get-Command pnpm -ErrorAction SilentlyContinue
+}
+if (-not $pnpm) {
+  throw "pnpm was not found. Run pnpm run setup:windows first."
+}
+
 $env:NODE_ENV = "development"
 
 Write-Host "Starting API on http://localhost:$ApiPort"
 Start-Process powershell -ArgumentList @(
   "-NoExit",
   "-Command",
-  "Set-Location '$root'; `$env:API_PORT='$ApiPort'; `$env:PORT='$ApiPort'; pnpm --filter @workspace/api-server run dev"
+  "Set-Location '$root'; `$env:API_PORT='$ApiPort'; `$env:PORT='$ApiPort'; & '$($pnpm.Source)' --filter @workspace/api-server run dev"
 )
 
 Write-Host "Starting dashboard on http://localhost:$DashboardPort"
 Start-Process powershell -ArgumentList @(
   "-NoExit",
   "-Command",
-  "Set-Location '$root'; `$env:DASHBOARD_PORT='$DashboardPort'; `$env:PORT='$DashboardPort'; `$env:BASE_PATH='/'; pnpm --filter @workspace/security-dashboard run dev"
+  "Set-Location '$root'; `$env:DASHBOARD_PORT='$DashboardPort'; `$env:PORT='$DashboardPort'; `$env:BASE_PATH='/'; & '$($pnpm.Source)' --filter @workspace/security-dashboard run dev"
 )
 
 Write-Host ""

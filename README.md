@@ -7,10 +7,10 @@ Security dashboard workspace with a Node/Express API, React/Vite dashboard, Post
 Install Node.js 22 LTS or newer, then run:
 
 ```powershell
-pnpm run setup:windows
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-windows.ps1
 ```
 
-The setup script enables Corepack/pnpm, creates `.env` from `.env.example`, and installs dependencies.
+The setup script enables or installs pnpm, creates `.env` from `.env.example`, and installs dependencies.
 
 Edit `.env` before starting the app:
 
