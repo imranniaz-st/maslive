@@ -1,0 +1,561 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Security Management Dashboard API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: tools
+    description: Security tool management
+  - name: scans
+    description: Scan execution and results
+  - name: dashboard
+    description: Dashboard overview data
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /tools:
+    get:
+      operationId: listTools
+      tags: [tools]
+      summary: List all available security tools
+      responses:
+        "200":
+          description: List of tools
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tool"
+    post:
+      operationId: createTool
+      tags: [tools]
+      summary: Add a custom tool configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToolInput"
+      responses:
+        "201":
+          description: Tool created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tool"
+
+  /tools/{id}:
+    get:
+      operationId: getTool
+      tags: [tools]
+      summary: Get a tool by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tool details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tool"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateTool
+      tags: [tools]
+      summary: Update a tool configuration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToolUpdate"
+      responses:
+        "200":
+          description: Updated tool
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tool"
+    delete:
+      operationId: deleteTool
+      tags: [tools]
+      summary: Delete a tool configuration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /scans:
+    get:
+      operationId: listScans
+      tags: [scans]
+      summary: List all scans
+      parameters:
+        - name: toolId
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: status
+          in: query
+          schema:
+            type: ["string", "null"]
+            enum: [pending, running, completed, failed, null]
+      responses:
+        "200":
+          description: List of scans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Scan"
+    post:
+      operationId: createScan
+      tags: [scans]
+      summary: Start a new scan / run a tool
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanInput"
+      responses:
+        "201":
+          description: Scan started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scan"
+
+  /scans/{id}:
+    get:
+      operationId: getScan
+      tags: [scans]
+      summary: Get scan details and output
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Scan details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scan"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteScan
+      tags: [scans]
+      summary: Delete a scan record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get dashboard summary statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /dashboard/recent-scans:
+    get:
+      operationId: getRecentScans
+      tags: [dashboard]
+      summary: Get recent scans for activity feed
+      responses:
+        "200":
+          description: Recent scans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Scan"
+
+  /dashboard/tool-usage:
+    get:
+      operationId: getToolUsage
+      tags: [dashboard]
+      summary: Get tool usage counts for charts
+      responses:
+        "200":
+          description: Tool usage stats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ToolUsageStat"
+
+  /cron-jobs:
+    get:
+      operationId: listCronJobs
+      tags: [cron]
+      summary: List all scheduled cron jobs
+      responses:
+        "200":
+          description: List of cron jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CronJob"
+    post:
+      operationId: createCronJob
+      tags: [cron]
+      summary: Create a new scheduled cron job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CronJobInput"
+      responses:
+        "201":
+          description: Cron job created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CronJob"
+
+  /cron-jobs/{id}:
+    get:
+      operationId: getCronJob
+      tags: [cron]
+      summary: Get a cron job by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cron job details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CronJob"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateCronJob
+      tags: [cron]
+      summary: Update a cron job
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CronJobUpdate"
+      responses:
+        "200":
+          description: Updated cron job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CronJob"
+    delete:
+      operationId: deleteCronJob
+      tags: [cron]
+      summary: Delete a cron job
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /cron-jobs/{id}/toggle:
+    post:
+      operationId: toggleCronJob
+      tags: [cron]
+      summary: Enable or disable a cron job
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated cron job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CronJob"
+
+  /cron-jobs/{id}/run-now:
+    post:
+      operationId: runCronJobNow
+      tags: [cron]
+      summary: Trigger a cron job immediately
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Scan started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scan"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Tool:
+      type: object
+      required: [id, name, category, command, description, isBuiltin, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [network, web, password, exploitation, recon, forensics, wireless, custom]
+        command:
+          type: string
+        defaultArgs:
+          type: ["string", "null"]
+        isBuiltin:
+          type: boolean
+        createdAt:
+          type: string
+
+    ToolInput:
+      type: object
+      required: [name, category, command, description]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [network, web, password, exploitation, recon, forensics, wireless, custom]
+        command:
+          type: string
+        defaultArgs:
+          type: string
+
+    ToolUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [network, web, password, exploitation, recon, forensics, wireless, custom]
+        command:
+          type: string
+        defaultArgs:
+          type: string
+
+    Scan:
+      type: object
+      required: [id, toolId, toolName, target, status, args, createdAt]
+      properties:
+        id:
+          type: integer
+        toolId:
+          type: integer
+        toolName:
+          type: string
+        target:
+          type: string
+        args:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        output:
+          type: ["string", "null"]
+        exitCode:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+        completedAt:
+          type: ["string", "null"]
+        durationMs:
+          type: ["integer", "null"]
+
+    ScanInput:
+      type: object
+      required: [toolId, target]
+      properties:
+        toolId:
+          type: integer
+        target:
+          type: string
+        args:
+          type: string
+
+    DashboardStats:
+      type: object
+      required: [totalScans, activeScans, completedScans, failedScans, totalTools, builtinTools, customTools]
+      properties:
+        totalScans:
+          type: integer
+        activeScans:
+          type: integer
+        completedScans:
+          type: integer
+        failedScans:
+          type: integer
+        totalTools:
+          type: integer
+        builtinTools:
+          type: integer
+        customTools:
+          type: integer
+
+    ToolUsageStat:
+      type: object
+      required: [toolName, category, count]
+      properties:
+        toolName:
+          type: string
+        category:
+          type: string
+        count:
+          type: integer
+
+    CronJob:
+      type: object
+      required: [id, toolId, toolName, target, args, schedule, enabled, createdAt]
+      properties:
+        id:
+          type: integer
+        toolId:
+          type: integer
+        toolName:
+          type: string
+        target:
+          type: string
+        args:
+          type: string
+        schedule:
+          type: string
+          description: Cron expression (e.g. "0 * * * *")
+        enabled:
+          type: boolean
+        lastRunAt:
+          type: ["string", "null"]
+        nextRunAt:
+          type: ["string", "null"]
+        lastScanId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    CronJobInput:
+      type: object
+      required: [toolId, target, schedule]
+      properties:
+        toolId:
+          type: integer
+        target:
+          type: string
+        args:
+          type: string
+        schedule:
+          type: string
+
+    CronJobUpdate:
+      type: object
+      properties:
+        target:
+          type: string
+        args:
+          type: string
+        schedule:
+          type: string
+        enabled:
+          type: boolean
